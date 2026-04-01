@@ -1,0 +1,15 @@
+.breadcrumb-root {
+  @apply flex items-center px-4 py-2 bg-gray-100 rounded-lg;
+}
+
+.breadcrumb-item {
+  @apply flex items-center;
+}
+
+.breadcrumb-separator {
+  @apply mx-2 text-gray-400;
+}
+
+.breadcrumb-link {
+  @apply text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-500 disabled:cursor-default;
+}

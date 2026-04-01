@@ -1,0 +1,23 @@
+.mapchart-root {
+  @apply absolute inset-0 w-full h-full;
+}
+
+.mapchart-container {
+  @apply w-full h-full;
+}
+
+.mapchart-loading {
+  @apply absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 z-10;
+}
+
+.mapchart-loading-text {
+  @apply text-gray-600 text-lg;
+}
+
+.mapchart-level-tip {
+  @apply absolute top-4 right-4 z-20 bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow text-sm text-gray-700;
+}
+
+.mapchart-zoom-guide {
+  @apply absolute bottom-4 right-4 z-20 bg-white bg-opacity-90 px-3 py-2 rounded-lg shadow text-xs text-gray-500;
+}

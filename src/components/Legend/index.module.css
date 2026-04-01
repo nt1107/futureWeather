@@ -1,0 +1,27 @@
+.legend-root {
+  @apply bg-white rounded-lg shadow-md p-4;
+}
+
+.legend-title {
+  @apply text-sm font-semibold text-gray-700 mb-3;
+}
+
+.legend-items {
+  @apply flex flex-col gap-2;
+}
+
+.legend-item {
+  @apply flex items-center gap-2;
+}
+
+.legend-color {
+  @apply w-4 h-4 rounded;
+}
+
+.legend-label {
+  @apply text-sm text-gray-600;
+}
+
+.legend-range {
+  @apply text-xs text-gray-400;
+}

@@ -1,0 +1,15 @@
+.app-root {
+  @apply relative w-full h-screen overflow-hidden;
+}
+
+.app-controls-overlay {
+  @apply absolute top-4 left-4 z-20 flex items-center gap-4;
+}
+
+.app-level-indicator {
+  @apply px-4 py-2 bg-white bg-opacity-90 rounded-lg shadow text-sm font-medium text-blue-700;
+}
+
+.app-legend {
+  @apply absolute bottom-4 left-4 z-20;
+}

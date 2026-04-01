@@ -1,0 +1,85 @@
+.tooltip-root {
+  @apply absolute bg-white rounded-lg shadow-lg p-4 z-50;
+  min-width: 320px;
+  max-width: 350px;
+}
+
+.tooltip-header {
+  @apply flex items-center justify-between mb-3 pb-2 border-b border-gray-100;
+}
+
+.tooltip-title {
+  @apply text-base font-semibold text-gray-800;
+}
+
+.tooltip-close {
+  @apply text-gray-400 hover:text-gray-600 text-xl leading-none cursor-pointer;
+}
+
+.tooltip-current {
+  @apply flex flex-col gap-2 mb-3 p-3 bg-gray-50 rounded-lg;
+}
+
+.tooltip-weather-icon {
+  @apply text-3xl text-center;
+}
+
+.tooltip-weather-info {
+  @apply flex items-center justify-center gap-2;
+}
+
+.tooltip-weather-text {
+  @apply text-lg font-medium text-gray-700;
+}
+
+.tooltip-temp-range {
+  @apply text-lg font-bold text-gray-900;
+}
+
+.tooltip-weather-extra {
+  @apply flex items-center justify-center gap-4 text-sm text-gray-500;
+}
+
+.tooltip-humidity {
+  @apply inline-flex items-center gap-1;
+}
+
+.tooltip-wind {
+  @apply inline-flex items-center gap-1;
+}
+
+.tooltip-chart {
+  @apply mb-3;
+}
+
+.tooltip-chart-title {
+  @apply text-xs text-gray-500 mb-1 text-center;
+}
+
+.tooltip-chart-label {
+  @apply text-xs fill-gray-400;
+}
+
+.tooltip-days {
+  @apply flex flex-col gap-1;
+}
+
+.tooltip-day-item {
+  @apply flex items-center justify-between py-1 px-2 bg-gray-50 rounded text-sm;
+}
+
+.tooltip-day-date {
+  @apply text-gray-500 w-16;
+}
+
+.tooltip-day-icon {
+  @apply text-lg;
+}
+
+.tooltip-day-temp {
+  @apply font-medium text-gray-700;
+}
+
+.tooltip-day-weather {
+  @apply text-gray-500 text-xs;
+}
