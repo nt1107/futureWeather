@@ -122,6 +122,7 @@ function WeatherTooltip({ visible, position, data, onClose }) {
         left: (position?.x || 0) + 15,
         top: (position?.y || 0) + 15,
       }}
+      onMouseLeave={onClose}
     >
       <div className={styles['tooltip-header']}>
         <span className={styles['tooltip-title']}>{name}</span>

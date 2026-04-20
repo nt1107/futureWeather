@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchWeatherByAdcode } from '../services/weather';
+import { fetch15DaysWeather, PROVINCE_LOCATION_MAP } from '../services/weather';
 
 // 天气数据 Hook
 export function useWeather() {
@@ -7,14 +7,16 @@ export function useWeather() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // 获取单个城市天气
+  // 获取单个城市天气（通过adcode）
   const fetchWeather = useCallback(async (adcode) => {
     if (weatherData[adcode]) {
       return weatherData[adcode];
     }
 
     try {
-      const data = await fetchWeatherByAdcode(adcode);
+      // 省级adcode有映射，其他层级用adcode作为locationId（模拟数据）
+      const locationId = PROVINCE_LOCATION_MAP[adcode] || adcode;
+      const data = await fetch15DaysWeather(locationId);
       setWeatherData((prev) => ({
         ...prev,
         [adcode]: data,
@@ -35,7 +37,8 @@ export function useWeather() {
 
     for (const adcode of adcodes) {
       try {
-        const data = await fetchWeatherByAdcode(adcode);
+        const locationId = PROVINCE_LOCATION_MAP[adcode] || adcode;
+        const data = await fetch15DaysWeather(locationId);
         results[adcode] = data;
       } catch (err) {
         results[adcode] = null;

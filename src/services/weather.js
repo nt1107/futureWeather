@@ -2,11 +2,33 @@
 
 const API_BASE_URL = 'https://devapi.qweather.com/v7';
 
-// API Key 需要在环境变量中配置
+// API Key
 const API_KEY = import.meta.env.VITE_QWEATHER_KEY || '';
 
-// 城市代码映射 (主要省会城市)
-export const CITY_ADCODE_MAP = {
+// 天气图标映射
+const WEATHER_ICONS = {
+  '晴': '☀',
+  '多云': '⛅',
+  '阴': '☁',
+  '小雨': '🌧',
+  '中雨': '🌧',
+  '大雨': '🌧',
+  '暴雨': '⛈',
+  '雷阵雨': '⛈',
+  '阵雨': '🌧',
+  '雨': '🌧',
+  '雪': '❄',
+  '小雪': '❄',
+  '中雪': '❄',
+  '大雪': '❄',
+  '雨夹雪': '🌨',
+  '雾': '🌫',
+  '霾': '🌫',
+  '风': '💨',
+};
+
+// 省级adcode到locationId映射
+const PROVINCE_LOCATION_MAP = {
   '110000': '101010100', // 北京
   '120000': '101020100', // 天津
   '130000': '101090101', // 河北 - 石家庄
@@ -43,73 +65,140 @@ export const CITY_ADCODE_MAP = {
   '820000': '101330201', // 澳门
 };
 
-// 获取15天天气预报
-export async function fetch15DaysWeather(locationId) {
+// 获取天气图标
+export function getWeatherIcon(text) {
+  return WEATHER_ICONS[text] || '🌤';
+}
+
+// 根据温度获取颜色
+export function getTemperatureColor(temp) {
+  if (temp >= 35) return '#ef4444';
+  if (temp >= 30) return '#f97316';
+  if (temp >= 20) return '#eab308';
+  if (temp >= 10) return '#22c55e';
+  if (temp >= 0) return '#3b82f6';
+  return '#6366f1';
+}
+
+// 获取15天天气预报（通过locationId或经纬度）
+export async function fetch15DaysWeather(location) {
   if (!API_KEY) {
-    console.warn('天气API Key未配置，使用模拟数据');
-    return generateMockWeatherData(locationId);
+    return generateMockWeatherData(location);
   }
 
   try {
-    const url = `${API_BASE_URL}/weather/15d?location=${locationId}&key=${API_KEY}`;
+    const url = `${API_BASE_URL}/weather/15d?location=${location}&key=${API_KEY}`;
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(`天气API请求失败: ${response.status}`);
+      throw new Error(`请求失败: ${response.status}`);
     }
 
     const data = await response.json();
 
     if (data.code !== '200') {
-      throw new Error(`天气API返回错误: ${data.code}`);
+      throw new Error(`API错误: ${data.code}`);
     }
 
     return data.daily;
   } catch (error) {
-    console.error('获取天气数据失败:', error);
-    return generateMockWeatherData(locationId);
+    console.warn('获取天气失败，使用模拟数据:', error.message);
+    return generateMockWeatherData(location);
   }
 }
 
-// 根据adcode获取天气
-export async function fetchWeatherByAdcode(adcode) {
-  const locationId = CITY_ADCODE_MAP[adcode] || adcode;
-  return fetch15DaysWeather(locationId);
-}
-
-// 批量获取多个城市的天气数据
-export async function fetchBatchWeather(adcodes) {
+// 批量获取天气数据（用于地图显示）
+export async function fetchBatchWeatherForMap(features, targetDate) {
   const results = {};
+  const targetDateStr = targetDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0];
 
-  for (const adcode of adcodes) {
-    try {
-      results[adcode] = await fetchWeatherByAdcode(adcode);
-    } catch (error) {
-      console.error(`获取 ${adcode} 天气失败:`, error);
-      results[adcode] = null;
+  // 省级：使用真实API（数量少，约34个）
+  // 市级和县级：使用模拟数据（数量太多，API可能不够）
+  const isProvinceLevel = features.length <= 50;
+
+  if (isProvinceLevel && API_KEY) {
+    // 批量获取省级天气
+    const batchSize = 5;
+    const batches = [];
+
+    for (let i = 0; i < features.length; i += batchSize) {
+      batches.push(features.slice(i, i + batchSize));
     }
+
+    for (const batch of batches) {
+      const promises = batch.map(async (feature) => {
+        const adcode = feature.properties.adcode;
+        const locationId = PROVINCE_LOCATION_MAP[adcode];
+
+        if (locationId) {
+          try {
+            const weather = await fetch15DaysWeather(locationId);
+            return { adcode, weather };
+          } catch (e) {
+            return { adcode, weather: generateMockWeatherData(adcode) };
+          }
+        } else {
+          // 没有映射，使用模拟数据
+          return { adcode, weather: generateMockWeatherData(adcode) };
+        }
+      });
+
+      const batchResults = await Promise.all(promises);
+      batchResults.forEach(({ adcode, weather }) => {
+        results[adcode] = weather;
+      });
+
+      // 批次间隔，避免API限流
+      if (batches.indexOf(batch) < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+  } else {
+    // 市级/县级：生成模拟数据
+    features.forEach(feature => {
+      const adcode = feature.properties.adcode;
+      results[adcode] = generateMockWeatherData(adcode);
+    });
   }
 
   return results;
 }
 
-// 生成模拟天气数据 (用于开发测试)
-function generateMockWeatherData(locationId) {
+// 获取指定日期的天气摘要
+export function getWeatherSummary(weatherData, targetDate) {
+  if (!weatherData || !weatherData.length) return null;
+
+  const targetDateStr = targetDate.toISOString().split('T')[0];
+  const dayData = weatherData.find(d => d.fxDate === targetDateStr);
+
+  if (!dayData) return null;
+
+  return {
+    text: dayData.textDay,
+    icon: getWeatherIcon(dayData.textDay),
+    tempMax: parseInt(dayData.tempMax),
+    tempMin: parseInt(dayData.tempMin),
+    tempRange: `${dayData.tempMin}~${dayData.tempMax}°`,
+  };
+}
+
+// 生成模拟天气数据
+function generateMockWeatherData(seed) {
   const today = new Date();
   const daily = [];
+  const seedNum = typeof seed === 'string' ? parseInt(seed.slice(-3)) || 0 : 0;
 
   for (let i = 0; i < 15; i++) {
     const date = new Date(today);
     date.setDate(date.getDate() + i);
 
-    // 模拟温度变化
-    const baseTemp = 15 + Math.sin(i * 0.5) * 10;
-    const tempMax = Math.round(baseTemp + 5 + Math.random() * 3);
-    const tempMin = Math.round(baseTemp - 5 + Math.random() * 3);
+    // 使用seed生成不同的模拟数据
+    const baseTemp = 15 + Math.sin(i * 0.5 + seedNum * 0.1) * 10;
+    const tempMax = Math.round(baseTemp + 5 + Math.sin(seedNum) * 3);
+    const tempMin = Math.round(baseTemp - 5 + Math.cos(seedNum) * 3);
 
-    // 模拟天气类型
-    const weatherTypes = ['晴', '多云', '阴', '小雨', '中雨', '雷阵雨'];
-    const weatherIndex = Math.floor(Math.random() * weatherTypes.length);
+    const weatherTypes = ['晴', '多云', '阴', '小雨', '中雨'];
+    const weatherIndex = Math.floor((i + seedNum) % weatherTypes.length);
 
     daily.push({
       fxDate: date.toISOString().split('T')[0],
@@ -117,39 +206,14 @@ function generateMockWeatherData(locationId) {
       tempMin: String(tempMin),
       textDay: weatherTypes[weatherIndex],
       textNight: weatherTypes[Math.max(0, weatherIndex - 1)],
-      windDirDay: ['东', '南', '西', '北'][Math.floor(Math.random() * 4)],
+      windDirDay: ['东', '南', '西', '北'][Math.floor((seedNum + i) % 4)],
       windScaleDay: `${Math.floor(Math.random() * 3) + 1}-${Math.floor(Math.random() * 2) + 2}`,
-      humidity: String(Math.floor(Math.random() * 30) + 40),
+      humidity: String(Math.floor(Math.random() * 30) + 40 + seedNum % 20),
     });
   }
 
   return daily;
 }
 
-// 根据温度获取颜色
-export function getTemperatureColor(temp) {
-  if (temp >= 35) return '#ef4444'; // 高温
-  if (temp >= 30) return '#f97316'; // 炎热
-  if (temp >= 20) return '#eab308'; // 温暖
-  if (temp >= 10) return '#22c55e'; // 凉爽
-  if (temp >= 0) return '#3b82f6'; // 寒冷
-  return '#6366f1'; // 极寒
-}
-
-// 解析天气数据为可视化格式
-export function parseWeatherForVisualization(weatherData, selectedDate) {
-  if (!weatherData || !weatherData.length) return null;
-
-  const targetDate = selectedDate.toISOString().split('T')[0];
-  const dayData = weatherData.find((d) => d.fxDate === targetDate);
-
-  if (!dayData) return null;
-
-  return {
-    tempMax: parseInt(dayData.tempMax),
-    tempMin: parseInt(dayData.tempMin),
-    textDay: dayData.textDay,
-    humidity: parseInt(dayData.humidity),
-    color: getTemperatureColor(parseInt(dayData.tempMax)),
-  };
-}
+// 导出省级映射供其他模块使用
+export { PROVINCE_LOCATION_MAP };

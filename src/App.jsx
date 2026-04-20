@@ -42,15 +42,16 @@ function App() {
     setTooltipVisible(false);
   }, []);
 
-  // 区域悬浮处理
+  // 区域悬浮处理 - 只显示tooltip，不累积天气数据影响地图颜色
   const handleAreaHover = useCallback(
     async (area) => {
       if (!area) {
         setTooltipVisible(false);
+        setHoverArea(null);
         return;
       }
 
-      // 获取天气数据
+      // 获取天气数据用于tooltip显示，但不更新全局weatherData
       const weather = await fetchWeather(area.adcode);
 
       setHoverArea({
