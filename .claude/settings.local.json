@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(curl -s \"https://api.qweather.com/v7/weather/15d?location=101010100\" -H \"Authorization: Bearer test\")"
     ]
   }
 }

@@ -65,12 +65,12 @@ const PARENT_BORDER_COLORS = {
   city: '#34a853',
 };
 
-// 空白底图样式（MapLibre不需要token，添加glyphs用于文字渲染）
+// 空白底图样式（使用开源glyphs服务）
 const emptyStyle = {
   version: 8,
   sources: {},
   layers: [],
-  glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
 };
 
 // 地图组件

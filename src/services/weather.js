@@ -1,9 +1,18 @@
-// 和风天气 API 服务
+// 和风天气 API 服务 - JWT认证版
 
-const API_BASE_URL = 'https://devapi.qweather.com/v7';
+import { SignJWT, importPKCS8 } from 'jose';
 
-// API Key
-const API_KEY = import.meta.env.VITE_QWEATHER_KEY || '';
+// 凭据配置
+const PROJECT_ID = import.meta.env.VITE_PROJECT_ID || '';
+const CREDENTIAL_ID = import.meta.env.VITE_CREDENTIAL_ID || '';
+const ED25519_KEY = import.meta.env.VITE_ED25519_KEY || '';
+
+// API域名（订阅版，无域名限制）
+const API_BASE_URL = 'https://api.qweather.com/v7';
+
+// JWT Token缓存
+let jwtTokenCache = null;
+let jwtTokenExpire = 0;
 
 // 天气图标映射
 const WEATHER_ICONS = {
@@ -26,6 +35,12 @@ const WEATHER_ICONS = {
   '霾': '🌫',
   '风': '💨',
 };
+
+console.log('天气API配置:', {
+  PROJECT_ID: PROJECT_ID ? '已配置' : '未配置',
+  CREDENTIAL_ID: CREDENTIAL_ID ? '已配置' : '未配置',
+  ED25519_KEY: ED25519_KEY ? '已配置' : '未配置',
+});
 
 // 省级adcode到locationId映射
 const PROVINCE_LOCATION_MAP = {
@@ -80,21 +95,76 @@ export function getTemperatureColor(temp) {
   return '#6366f1';
 }
 
-// 获取15天天气预报（通过locationId或经纬度）
+// 生成JWT Token
+async function generateJWTToken() {
+  if (!CREDENTIAL_ID || !ED25519_KEY) {
+    console.warn('缺少JWT配置，使用模拟数据');
+    return null;
+  }
+
+  // 检查缓存的token是否有效（提前5分钟刷新）
+  const now = Math.floor(Date.now() / 1000);
+  if (jwtTokenCache && jwtTokenExpire > now + 300) {
+    return jwtTokenCache;
+  }
+
+  try {
+    // 解析私钥
+    const privateKey = await importPKCS8(ED25519_KEY, 'EdDSA');
+
+    // 生成JWT（有效期24小时）
+    // 按照和风天气官方文档要求
+    const payload = {
+      sub: PROJECT_ID,        // 项目ID（官方要求）
+      iat: now,
+      exp: now + 3600,        // 1小时后过期（官方建议短有效期）
+    };
+
+    const jwt = await new SignJWT(payload)
+      .setProtectedHeader({ alg: 'EdDSA', kid: CREDENTIAL_ID })
+      .sign(privateKey);
+
+    // 缓存token
+    jwtTokenCache = jwt;
+    jwtTokenExpire = payload.exp;
+
+    console.log('JWT Token生成成功，有效期至:', new Date(payload.exp * 1000).toLocaleString());
+    console.log('JWT Token内容:', jwt);
+    console.log('JWT Payload:', { sub: PROJECT_ID, kid: CREDENTIAL_ID, iat: now, exp: payload.exp });
+    return jwt;
+  } catch (error) {
+    console.error('生成JWT Token失败:', error);
+    return null;
+  }
+}
+
+// 获取15天天气预报（JWT认证）
 export async function fetch15DaysWeather(location) {
-  if (!API_KEY) {
+  console.log('fetch15DaysWeather调用, location:', location);
+
+  const token = await generateJWTToken();
+
+  if (!token) {
+    console.log('无JWT Token, 使用模拟数据');
     return generateMockWeatherData(location);
   }
 
   try {
-    const url = `${API_BASE_URL}/weather/15d?location=${location}&key=${API_KEY}`;
-    const response = await fetch(url);
+    const url = `${API_BASE_URL}/weather/15d?location=${location}`;
+    console.log('请求URL:', url);
+
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`请求失败: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('API响应:', data);
 
     if (data.code !== '200') {
       throw new Error(`API错误: ${data.code}`);
@@ -109,15 +179,17 @@ export async function fetch15DaysWeather(location) {
 
 // 批量获取天气数据（用于地图显示）
 export async function fetchBatchWeatherForMap(features, targetDate) {
+  console.log('fetchBatchWeatherForMap被调用, features数量:', features.length);
+
   const results = {};
   const targetDateStr = targetDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0];
 
-  // 省级：使用真实API（数量少，约34个）
-  // 市级和县级：使用模拟数据（数量太多，API可能不够）
   const isProvinceLevel = features.length <= 50;
+  console.log('是否省级:', isProvinceLevel);
 
-  if (isProvinceLevel && API_KEY) {
-    // 批量获取省级天气
+  // 省级使用真实API
+  if (isProvinceLevel) {
+    console.log('开始调用真实天气API...');
     const batchSize = 5;
     const batches = [];
 
@@ -138,7 +210,6 @@ export async function fetchBatchWeatherForMap(features, targetDate) {
             return { adcode, weather: generateMockWeatherData(adcode) };
           }
         } else {
-          // 没有映射，使用模拟数据
           return { adcode, weather: generateMockWeatherData(adcode) };
         }
       });
@@ -148,7 +219,7 @@ export async function fetchBatchWeatherForMap(features, targetDate) {
         results[adcode] = weather;
       });
 
-      // 批次间隔，避免API限流
+      // 批次间隔
       if (batches.indexOf(batch) < batches.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 200));
       }
@@ -192,7 +263,6 @@ function generateMockWeatherData(seed) {
     const date = new Date(today);
     date.setDate(date.getDate() + i);
 
-    // 使用seed生成不同的模拟数据
     const baseTemp = 15 + Math.sin(i * 0.5 + seedNum * 0.1) * 10;
     const tempMax = Math.round(baseTemp + 5 + Math.sin(seedNum) * 3);
     const tempMin = Math.round(baseTemp - 5 + Math.cos(seedNum) * 3);
@@ -215,5 +285,4 @@ function generateMockWeatherData(seed) {
   return daily;
 }
 
-// 导出省级映射供其他模块使用
 export { PROVINCE_LOCATION_MAP };
