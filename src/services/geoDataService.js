@@ -130,7 +130,7 @@ function simplifyGeometry(geometry) {
 async function fetchSingleGeoJSON(adcode) {
   try {
     const url = `${GEO_BASE_URL}/${adcode}_full.json`;
-    const response = await fetch(url);
+    const response = await fetch(url, { referrerPolicy: 'no-referrer' });
     if (!response.ok) {
       return null;
     }
