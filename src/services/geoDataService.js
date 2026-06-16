@@ -296,8 +296,6 @@ async function loadCountiesGeoJSON(onProgress) {
       });
     });
 
-    console.log(`准备加载 ${cityAdcodes.length} 个市的县级数据，跳过 ${skippedCount} 个特殊区域`);
-
     // 分批加载县级数据
     const batchSize = 10;
     for (let i = 0; i < cityAdcodes.length; i += batchSize) {
@@ -351,8 +349,6 @@ async function loadCountiesGeoJSON(onProgress) {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
-
-    console.log(`县级数据加载完成，共 ${allFeatures.length} 个区域`);
 
     geoDataCache.counties = {
       type: 'FeatureCollection',

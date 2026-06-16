@@ -36,12 +36,6 @@ const WEATHER_ICONS = {
   '风': '💨',
 };
 
-console.log('天气API配置:', {
-  PROJECT_ID: PROJECT_ID ? '已配置' : '未配置',
-  CREDENTIAL_ID: CREDENTIAL_ID ? '已配置' : '未配置',
-  ED25519_KEY: ED25519_KEY ? '已配置' : '未配置',
-});
-
 // 省级adcode到locationId映射
 const PROVINCE_LOCATION_MAP = {
   '110000': '101010100', // 北京
@@ -128,9 +122,6 @@ async function generateJWTToken() {
     jwtTokenCache = jwt;
     jwtTokenExpire = payload.exp;
 
-    console.log('JWT Token生成成功，有效期至:', new Date(payload.exp * 1000).toLocaleString());
-    console.log('JWT Token内容:', jwt);
-    console.log('JWT Payload:', { sub: PROJECT_ID, kid: CREDENTIAL_ID, iat: now, exp: payload.exp });
     return jwt;
   } catch (error) {
     console.error('生成JWT Token失败:', error);
@@ -140,8 +131,6 @@ async function generateJWTToken() {
 
 // 获取15天天气预报（JWT认证）
 export async function fetch15DaysWeather(location) {
-  console.log('fetch15DaysWeather调用, location:', location);
-
   const token = await generateJWTToken();
 
   if (!token) {
@@ -151,7 +140,6 @@ export async function fetch15DaysWeather(location) {
 
   try {
     const url = `${API_BASE_URL}/weather/15d?location=${location}`;
-    console.log('请求URL:', url);
 
     const response = await fetch(url, {
       headers: {
@@ -164,7 +152,6 @@ export async function fetch15DaysWeather(location) {
     }
 
     const data = await response.json();
-    console.log('API响应:', data);
 
     if (data.code !== '200') {
       throw new Error(`API错误: ${data.code}`);
@@ -179,17 +166,13 @@ export async function fetch15DaysWeather(location) {
 
 // 批量获取天气数据（用于地图显示）
 export async function fetchBatchWeatherForMap(features, targetDate) {
-  console.log('fetchBatchWeatherForMap被调用, features数量:', features.length);
-
   const results = {};
   const targetDateStr = targetDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0];
 
   const isProvinceLevel = features.length <= 50;
-  console.log('是否省级:', isProvinceLevel);
 
   // 省级使用真实API
   if (isProvinceLevel) {
-    console.log('开始调用真实天气API...');
     const batchSize = 5;
     const batches = [];
 
